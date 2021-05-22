@@ -26,7 +26,7 @@ import { traceConnection, traceSendCommand } from './utils';
 import { VERSION } from './version';
 
 const DEFAULT_CONFIG: IORedisInstrumentationConfig = {
-  requireParentSpan: true,
+  requireParentSpan: false,
 };
 
 export class IORedisInstrumentation extends InstrumentationBase<

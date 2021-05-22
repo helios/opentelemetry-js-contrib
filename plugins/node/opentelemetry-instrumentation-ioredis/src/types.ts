@@ -80,6 +80,6 @@ export interface IORedisInstrumentationConfig extends InstrumentationConfig {
   /** Function for adding custom attributes on db response */
   responseHook?: RedisResponseCustomAttributeFunction;
 
-  /** Require parent to create ioredis span, default when unset is true */
+  /** Require parent to create ioredis span, default when unset is false */
   requireParentSpan?: boolean;
 }

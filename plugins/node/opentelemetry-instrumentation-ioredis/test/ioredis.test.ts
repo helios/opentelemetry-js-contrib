@@ -627,11 +627,11 @@ describe('ioredis', () => {
         instrumentation.disable();
         instrumentation.enable();
       });
-      it('should not create child span', async () => {
+      it('should create child span', async () => {
         await client.set(testKeyName, 'data');
         const result = await client.del(testKeyName);
         assert.strictEqual(result, 1);
-        assert.strictEqual(memoryExporter.getFinishedSpans().length, 0);
+        assert.strictEqual(memoryExporter.getFinishedSpans().length, 2);
       });
     });
 
@@ -841,6 +841,7 @@ describe('ioredis', () => {
       it('should call responseHook when set in config', async () => {
         instrumentation.disable();
         const config: IORedisInstrumentationConfig = {
+          requireParentSpan: true,
           responseHook: (
             span: Span,
             cmdName: string,
