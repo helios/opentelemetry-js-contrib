@@ -14,7 +14,13 @@
  * limitations under the License.
  */
 
-import { Span, SpanStatusCode, Tracer, SpanKind, diag } from '@opentelemetry/api';
+import {
+  Span,
+  SpanStatusCode,
+  Tracer,
+  SpanKind,
+  diag,
+} from '@opentelemetry/api';
 import { AttributeNames } from './enums/AttributeNames';
 import {
   SemanticAttributes,
@@ -27,9 +33,10 @@ import {
   PgClientConnectionParams,
   PgPoolCallback,
   PgPoolExtended,
+  PgInstrumentationConfig,
 } from './types';
 import * as pgTypes from 'pg';
-import { PgInstrumentation, PgInstrumentationConfig } from './';
+import { PgInstrumentation } from './';
 import { safeExecuteInTheMiddle } from '@opentelemetry/instrumentation';
 
 function arrayStringifyHelper(arr: Array<unknown>): string {
@@ -174,7 +181,10 @@ export function handleExecutionResult(
   ) {
     safeExecuteInTheMiddle(
       () => {
-          config.responseHook!(span, pgResult as pgTypes.QueryResult | pgTypes.QueryArrayResult);
+        config.responseHook!(
+          span,
+          pgResult as pgTypes.QueryResult | pgTypes.QueryArrayResult
+        );
       },
       err => {
         if (err) {

@@ -33,8 +33,8 @@ import {
 } from '@opentelemetry/tracing';
 import * as assert from 'assert';
 import type * as pg from 'pg';
-import * as pgTypes from 'pg';
 import { PgInstrumentation } from '../src';
+import { PgInstrumentationConfig } from '../src/types';
 import { AttributeNames } from '../src/enums/AttributeNames';
 import { TimedEvent } from './types';
 import {
@@ -88,11 +88,17 @@ const runCallbackTest = (
 };
 
 describe('pg@7.x', () => {
+  function create(config: PgInstrumentationConfig = {}) {
+    instrumentation.setConfig(config);
+    instrumentation.enable();
+  }
+
   let client: pg.Client;
   let instrumentation: PgInstrumentation;
   let contextManager: AsyncHooksContextManager;
   const provider = new BasicTracerProvider();
   const tracer = provider.getTracer('external');
+
   const testPostgres = process.env.RUN_POSTGRES_TESTS; // For CI: assumes local postgres db is already available
   const testPostgresLocally = process.env.RUN_POSTGRES_TESTS_LOCAL; // For local: spins up local postgres db via docker
   const shouldTest = testPostgres || testPostgresLocally; // Skips these tests if false (default)
@@ -108,15 +114,7 @@ describe('pg@7.x', () => {
     if (testPostgresLocally) {
       testUtils.startDocker('postgres');
     }
-  });
 
-  after(async () => {
-    if (testPostgresLocally) {
-      testUtils.cleanUpDocker('postgres');
-    }    
-  });
-
-  beforeEach(async function () {
     instrumentation = new PgInstrumentation();
 
     contextManager = new AsyncHooksContextManager().enable();
@@ -126,7 +124,16 @@ describe('pg@7.x', () => {
     const pg = require('pg');
     client = new pg.Client(CONFIG);
     await client.connect();
+  });
 
+  after(async () => {
+    if (testPostgresLocally) {
+      testUtils.cleanUpDocker('postgres');
+    }
+    await client.end();
+  });
+
+  beforeEach(async () => {
     contextManager = new AsyncHooksContextManager().enable();
     context.setGlobalContextManager(contextManager);
   });
@@ -134,7 +141,6 @@ describe('pg@7.x', () => {
   afterEach(async () => {
     memoryExporter.reset();
     context.disable();
-    await client.end();
   });
 
   it('should return an instrumentation', () => {
@@ -376,32 +382,27 @@ describe('pg@7.x', () => {
 
       describe('AND valid responseHook', () => {
         beforeEach(async () => {
-          instrumentation.disable();
-          instrumentation = new PgInstrumentation({
+          const config: PgInstrumentationConfig = {
             enhancedDatabaseReporting: true,
-            responseHook: (span: Span, data: pgTypes.QueryResult | pgTypes.QueryArrayResult) => {
-              span.setAttribute(dataAttributeName, JSON.stringify({
-                "rowCount": data.rowCount,              
-              }));
-            }
-          });
-  
-          contextManager = new AsyncHooksContextManager().enable();
-          context.setGlobalContextManager(contextManager);
-          instrumentation.setTracerProvider(provider);
-          instrumentation.enable();
-          const pg = require('pg');
-          client = new pg.Client(CONFIG);
-          await client.connect();
+            responseHook: (
+              span: Span,
+              data: pg.QueryResult | pg.QueryArrayResult
+            ) =>
+              span.setAttribute(
+                dataAttributeName,
+                JSON.stringify({ rowCount: data.rowCount })
+              ),
+          };
+          create(config);
         });
-  
-        it('should attach response hook data to resulting spans for query with callback ', done => {  
+
+        it('should attach response hook data to resulting spans for query with callback ', done => {
           const attributes = {
             ...DEFAULT_ATTRIBUTES,
             [SemanticAttributes.DB_STATEMENT]: query,
-            [dataAttributeName]: '{\"rowCount\":1}'
-          };                
-  
+            [dataAttributeName]: '{"rowCount":1}',
+          };
+
           const span = tracer.startSpan('test span');
           context.with(setSpan(context.active(), span), () => {
             const res = client.query(query, (err, res) => {
@@ -411,20 +412,20 @@ describe('pg@7.x', () => {
               done();
             });
             assert.strictEqual(res, undefined, 'No promise is returned');
-          });            
+          });
         });
 
         it('should attach response hook data to resulting spans for query returning a Promise', async () => {
           const attributes = {
             ...DEFAULT_ATTRIBUTES,
             [SemanticAttributes.DB_STATEMENT]: query,
-            [dataAttributeName]: '{\"rowCount\":1}'
+            [dataAttributeName]: '{"rowCount":1}',
           };
 
           const span = tracer.startSpan('test span');
           await context.with(setSpan(context.active(), span), async () => {
             const resPromise = await client.query({
-              text: query
+              text: query,
             });
             try {
               assert.ok(resPromise);
@@ -438,39 +439,33 @@ describe('pg@7.x', () => {
 
       describe('AND invalid responseHook', () => {
         beforeEach(async () => {
-          instrumentation.disable();
-          instrumentation = new PgInstrumentation({
+          create({
             enhancedDatabaseReporting: true,
-            responseHook: (span: Span, data: pgTypes.QueryResult | pgTypes.QueryArrayResult) => {
+            responseHook: (
+              span: Span,
+              data: pg.QueryResult | pg.QueryArrayResult
+            ) => {
               throw 'some kind of failure!';
-            }
+            },
           });
-  
-          contextManager = new AsyncHooksContextManager().enable();
-          context.setGlobalContextManager(contextManager);
-          instrumentation.setTracerProvider(provider);
-          instrumentation.enable();
-          const pg = require('pg');
-          client = new pg.Client(CONFIG);
-          await client.connect();
         });
 
         it('should not do any harm when throwing an exception', done => {
           const attributes = {
             ...DEFAULT_ATTRIBUTES,
-            [SemanticAttributes.DB_STATEMENT]: query
-          };                   
-  
+            [SemanticAttributes.DB_STATEMENT]: query,
+          };
+
           const span = tracer.startSpan('test span');
           context.with(setSpan(context.active(), span), () => {
             const res = client.query(query, (err, res) => {
               assert.strictEqual(err, null);
               assert.ok(res);
               runCallbackTest(span, attributes, events);
-              done()
+              done();
             });
             assert.strictEqual(res, undefined, 'No promise is returned');
-          });      
+          });
         });
       });
     });
