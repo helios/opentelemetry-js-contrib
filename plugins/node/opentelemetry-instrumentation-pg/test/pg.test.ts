@@ -33,8 +33,7 @@ import {
 } from '@opentelemetry/tracing';
 import * as assert from 'assert';
 import type * as pg from 'pg';
-import { PgInstrumentation } from '../src';
-import { PgInstrumentationConfig } from '../src/types';
+import { PgInstrumentation, PgInstrumentationConfig } from '../src';
 import { AttributeNames } from '../src/enums/AttributeNames';
 import { TimedEvent } from './types';
 import {
@@ -133,12 +132,12 @@ describe('pg@7.x', () => {
     await client.end();
   });
 
-  beforeEach(async () => {
+  beforeEach(() => {
     contextManager = new AsyncHooksContextManager().enable();
     context.setGlobalContextManager(contextManager);
   });
 
-  afterEach(async () => {
+  afterEach(() => {
     memoryExporter.reset();
     context.disable();
   });
@@ -381,6 +380,11 @@ describe('pg@7.x', () => {
       const events: TimedEvent[] = [];
 
       describe('AND valid responseHook', () => {
+        const attributes = {
+          ...DEFAULT_ATTRIBUTES,
+          [SemanticAttributes.DB_STATEMENT]: query,
+          [dataAttributeName]: '{"rowCount":1}',
+        };
         beforeEach(async () => {
           const config: PgInstrumentationConfig = {
             enhancedDatabaseReporting: true,
@@ -397,12 +401,6 @@ describe('pg@7.x', () => {
         });
 
         it('should attach response hook data to resulting spans for query with callback ', done => {
-          const attributes = {
-            ...DEFAULT_ATTRIBUTES,
-            [SemanticAttributes.DB_STATEMENT]: query,
-            [dataAttributeName]: '{"rowCount":1}',
-          };
-
           const span = tracer.startSpan('test span');
           context.with(setSpan(context.active(), span), () => {
             const res = client.query(query, (err, res) => {
@@ -438,6 +436,11 @@ describe('pg@7.x', () => {
       });
 
       describe('AND invalid responseHook', () => {
+        const attributes = {
+          ...DEFAULT_ATTRIBUTES,
+          [SemanticAttributes.DB_STATEMENT]: query,
+        };
+
         beforeEach(async () => {
           create({
             enhancedDatabaseReporting: true,
@@ -451,11 +454,6 @@ describe('pg@7.x', () => {
         });
 
         it('should not do any harm when throwing an exception', done => {
-          const attributes = {
-            ...DEFAULT_ATTRIBUTES,
-            [SemanticAttributes.DB_STATEMENT]: query,
-          };
-
           const span = tracer.startSpan('test span');
           context.with(setSpan(context.active(), span), () => {
             const res = client.query(query, (err, res) => {

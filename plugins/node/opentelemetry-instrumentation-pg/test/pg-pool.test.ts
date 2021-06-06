@@ -24,8 +24,7 @@ import {
   setSpan,
 } from '@opentelemetry/api';
 import { BasicTracerProvider } from '@opentelemetry/tracing';
-import { PgInstrumentation } from '../src';
-import { PgInstrumentationConfig } from '../src/types';
+import { PgInstrumentation, PgInstrumentationConfig } from '../src';
 import { AsyncHooksContextManager } from '@opentelemetry/context-async-hooks';
 import * as testUtils from '@opentelemetry/test-utils';
 import {
@@ -302,6 +301,15 @@ describe('pg-pool@2.x', () => {
       const events: TimedEvent[] = [];
 
       describe('AND valid responseHook', () => {
+        const pgPoolattributes = {
+          ...DEFAULT_PGPOOL_ATTRIBUTES,
+        };
+        const pgAttributes = {
+          ...DEFAULT_PG_ATTRIBUTES,
+          [SemanticAttributes.DB_STATEMENT]: query,
+          [dataAttributeName]: '{"rowCount":1}',
+        };
+
         beforeEach(async () => {
           const config: PgInstrumentationConfig = {
             enhancedDatabaseReporting: true,
@@ -319,14 +327,6 @@ describe('pg-pool@2.x', () => {
         });
 
         it('should attach response hook data to resulting spans for query with callback ', done => {
-          const pgPoolattributes = {
-            ...DEFAULT_PGPOOL_ATTRIBUTES,
-          };
-          const pgAttributes = {
-            ...DEFAULT_PG_ATTRIBUTES,
-            [SemanticAttributes.DB_STATEMENT]: query,
-            [dataAttributeName]: '{"rowCount":1}',
-          };
           const parentSpan = provider
             .getTracer('test-pg-pool')
             .startSpan('test span');
@@ -362,14 +362,6 @@ describe('pg-pool@2.x', () => {
         });
 
         it('should attach response hook data to resulting spans for query returning a Promise', async () => {
-          const pgPoolattributes = {
-            ...DEFAULT_PGPOOL_ATTRIBUTES,
-          };
-          const pgAttributes = {
-            ...DEFAULT_PG_ATTRIBUTES,
-            [SemanticAttributes.DB_STATEMENT]: query,
-            [dataAttributeName]: '{"rowCount":1}',
-          };
           const span = provider
             .getTracer('test-pg-pool')
             .startSpan('test span');
@@ -383,6 +375,14 @@ describe('pg-pool@2.x', () => {
       });
 
       describe('AND invalid responseHook', () => {
+        const pgPoolattributes = {
+          ...DEFAULT_PGPOOL_ATTRIBUTES,
+        };
+        const pgAttributes = {
+          ...DEFAULT_PG_ATTRIBUTES,
+          [SemanticAttributes.DB_STATEMENT]: query,
+        };
+
         beforeEach(async () => {
           create({
             enhancedDatabaseReporting: true,
@@ -396,13 +396,6 @@ describe('pg-pool@2.x', () => {
         });
 
         it('should not do any harm when throwing an exception', done => {
-          const pgPoolattributes = {
-            ...DEFAULT_PGPOOL_ATTRIBUTES,
-          };
-          const pgAttributes = {
-            ...DEFAULT_PG_ATTRIBUTES,
-            [SemanticAttributes.DB_STATEMENT]: query,
-          };
           const parentSpan = provider
             .getTracer('test-pg-pool')
             .startSpan('test span');
