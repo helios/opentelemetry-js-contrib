@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { Span, SpanStatusCode, Tracer, SpanKind } from '@opentelemetry/api';
+import { Span, SpanStatusCode, Tracer, SpanKind, diag } from '@opentelemetry/api';
 import { AttributeNames } from './enums/AttributeNames';
 import {
   SemanticAttributes,
@@ -30,6 +30,7 @@ import {
 } from './types';
 import * as pgTypes from 'pg';
 import { PgInstrumentation, PgInstrumentationConfig } from './';
+import { safeExecuteInTheMiddle } from '@opentelemetry/instrumentation';
 
 function arrayStringifyHelper(arr: Array<unknown>): string {
   return '[' + arr.toString() + ']';
@@ -161,7 +162,32 @@ export function handleInvalidQuery(
   return result;
 }
 
+export function handleExecutionResult(
+  config: PgInstrumentationConfig,
+  span: Span,
+  pgResult: pgTypes.QueryResult | pgTypes.QueryArrayResult | unknown
+) {
+  if (
+    config.enhancedDatabaseReporting &&
+    config.responseHook !== undefined &&
+    pgResult !== undefined
+  ) {
+    safeExecuteInTheMiddle(
+      () => {
+          config.responseHook!(span, pgResult as pgTypes.QueryResult | pgTypes.QueryArrayResult);
+      },
+      err => {
+        if (err) {
+          diag.error('Error running response hook', err);
+        }
+      },
+      true
+    );
+  }
+}
+
 export function patchCallback(
+  instrumentationConfig: PgInstrumentationConfig,
   span: Span,
   cb: PostgresCallback
 ): PostgresCallback {
@@ -176,7 +202,10 @@ export function patchCallback(
         code: SpanStatusCode.ERROR,
         message: err.message,
       });
+    } else {
+      handleExecutionResult(instrumentationConfig, span, res);
     }
+
     span.end();
     cb.call(this, err, res);
   };

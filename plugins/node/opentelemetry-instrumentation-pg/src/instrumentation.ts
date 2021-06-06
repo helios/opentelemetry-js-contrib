@@ -45,6 +45,10 @@ import {
 } from '@opentelemetry/semantic-conventions';
 import { VERSION } from './version';
 
+export interface PgInstrumentationExecutionResponseHook {
+  (span: Span, data: pgTypes.QueryResult | pgTypes.QueryArrayResult): void;
+}
+
 export interface PgInstrumentationConfig extends InstrumentationConfig {
   /**
    * If true, additional information about query parameters and
@@ -52,6 +56,14 @@ export interface PgInstrumentationConfig extends InstrumentationConfig {
    * database operations.
    */
   enhancedDatabaseReporting?: boolean;
+
+  /**
+   * Hook that allows adding custom span attributes based on the data
+   * returned from "query" Pg actions.
+   *
+   * @default undefined
+   */
+  responseHook?: PgInstrumentationExecutionResponseHook;
 }
 
 const PG_POOL_COMPONENT = 'pg-pool';
@@ -164,6 +176,7 @@ export class PgInstrumentation extends InstrumentationBase {
           if (typeof args[args.length - 1] === 'function') {
             // Patch ParameterQuery callback
             args[args.length - 1] = utils.patchCallback(
+              plugin._config as InstrumentationConfig & PgInstrumentationConfig,
               span,
               args[args.length - 1] as PostgresCallback
             );
@@ -176,6 +189,7 @@ export class PgInstrumentation extends InstrumentationBase {
           ) {
             // Patch ConfigQuery callback
             let callback = utils.patchCallback(
+              plugin._config as InstrumentationConfig & PgInstrumentationConfig,
               span,
               (args[0] as NormalizedQueryConfig).callback!
             );
@@ -199,6 +213,11 @@ export class PgInstrumentation extends InstrumentationBase {
             .then((result: unknown) => {
               // Return a pass-along promise which ends the span and then goes to user's orig resolvers
               return new Promise(resolve => {
+                utils.handleExecutionResult(
+                  plugin._config as InstrumentationConfig & PgInstrumentationConfig,
+                  span,
+                  result
+                );
                 span.end();
                 resolve(result);
               });
