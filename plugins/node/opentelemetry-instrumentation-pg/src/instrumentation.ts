@@ -110,7 +110,6 @@ export class PgInstrumentation extends InstrumentationBase {
 
   private _getClientQueryPatch() {
     const plugin = this;
-    const config = plugin.getConfig() as PgInstrumentationConfig & InstrumentationConfig;
 
     return (original: typeof pgTypes.Client.prototype.query) => {
       diag.debug(
@@ -127,7 +126,8 @@ export class PgInstrumentation extends InstrumentationBase {
             span = utils.handleParameterizedQuery.call(
               this,
               plugin.tracer,
-              config,
+              plugin.getConfig() as PgInstrumentationConfig &
+                InstrumentationConfig,
               query,
               params
             );
@@ -139,7 +139,8 @@ export class PgInstrumentation extends InstrumentationBase {
           span = utils.handleConfigQuery.call(
             this,
             plugin.tracer,
-            config,
+            plugin.getConfig() as PgInstrumentationConfig &
+              InstrumentationConfig,
             queryConfig
           );
         } else {
@@ -157,7 +158,8 @@ export class PgInstrumentation extends InstrumentationBase {
           if (typeof args[args.length - 1] === 'function') {
             // Patch ParameterQuery callback
             args[args.length - 1] = utils.patchCallback(
-              config,
+              plugin.getConfig() as PgInstrumentationConfig &
+                InstrumentationConfig,
               span,
               args[args.length - 1] as PostgresCallback
             );
@@ -173,7 +175,8 @@ export class PgInstrumentation extends InstrumentationBase {
           ) {
             // Patch ConfigQuery callback
             let callback = utils.patchCallback(
-              config,
+              plugin.getConfig() as PgInstrumentationConfig &
+                InstrumentationConfig,
               span,
               (args[0] as NormalizedQueryConfig).callback!
             );
@@ -197,7 +200,12 @@ export class PgInstrumentation extends InstrumentationBase {
             .then((result: unknown) => {
               // Return a pass-along promise which ends the span and then goes to user's orig resolvers
               return new Promise(resolve => {
-                utils.handleExecutionResult(config, span, result);
+                utils.handleExecutionResult(
+                  plugin.getConfig() as PgInstrumentationConfig &
+                    InstrumentationConfig,
+                  span,
+                  result
+                );
                 span.end();
                 resolve(result);
               });
