@@ -60,14 +60,6 @@ export class PgInstrumentation extends InstrumentationBase {
     );
   }
 
-  private _getConfig(): PgInstrumentationConfig {
-    return this._config as PgInstrumentationConfig & InstrumentationConfig;
-  }
-
-  setConfig(config: PgInstrumentationConfig & InstrumentationConfig = {}) {
-    this._config = Object.assign({}, config);
-  }
-
   protected init() {
     const modulePG = new InstrumentationNodeModuleDefinition<typeof pgTypes>(
       'pg',
@@ -133,7 +125,8 @@ export class PgInstrumentation extends InstrumentationBase {
             span = utils.handleParameterizedQuery.call(
               this,
               plugin.tracer,
-              plugin._getConfig(),
+              plugin.getConfig() as PgInstrumentationConfig &
+                InstrumentationConfig,
               query,
               params
             );
@@ -145,7 +138,8 @@ export class PgInstrumentation extends InstrumentationBase {
           span = utils.handleConfigQuery.call(
             this,
             plugin.tracer,
-            plugin._getConfig(),
+            plugin.getConfig() as PgInstrumentationConfig &
+              InstrumentationConfig,
             queryConfig
           );
         } else {
@@ -163,7 +157,8 @@ export class PgInstrumentation extends InstrumentationBase {
           if (typeof args[args.length - 1] === 'function') {
             // Patch ParameterQuery callback
             args[args.length - 1] = utils.patchCallback(
-              plugin._getConfig(),
+              plugin.getConfig() as PgInstrumentationConfig &
+                InstrumentationConfig,
               span,
               args[args.length - 1] as PostgresCallback
             );
@@ -179,7 +174,8 @@ export class PgInstrumentation extends InstrumentationBase {
           ) {
             // Patch ConfigQuery callback
             let callback = utils.patchCallback(
-              plugin._getConfig(),
+              plugin.getConfig() as PgInstrumentationConfig &
+                InstrumentationConfig,
               span,
               (args[0] as NormalizedQueryConfig).callback!
             );
@@ -203,7 +199,12 @@ export class PgInstrumentation extends InstrumentationBase {
             .then((result: unknown) => {
               // Return a pass-along promise which ends the span and then goes to user's orig resolvers
               return new Promise(resolve => {
-                utils.handleExecutionResult(plugin._getConfig(), span, result);
+                utils.handleExecutionResult(
+                  plugin.getConfig() as PgInstrumentationConfig &
+                    InstrumentationConfig,
+                  span,
+                  result
+                );
                 span.end();
                 resolve(result);
               });
