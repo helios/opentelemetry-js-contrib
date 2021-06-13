@@ -24,7 +24,11 @@ import {
   trace,
 } from '@opentelemetry/api';
 import { BasicTracerProvider } from '@opentelemetry/tracing';
-import { PgInstrumentation, PgInstrumentationConfig } from '../src';
+import {
+  PgInstrumentation,
+  PgInstrumentationConfig,
+  PgResponseHookInformation,
+} from '../src';
 import { AsyncHooksContextManager } from '@opentelemetry/context-async-hooks';
 import * as testUtils from '@opentelemetry/test-utils';
 import {
@@ -315,11 +319,11 @@ describe('pg-pool@2.x', () => {
             enhancedDatabaseReporting: true,
             responseHook: (
               span: Span,
-              data: pg.QueryResult | pg.QueryArrayResult
+              responseInfo: PgResponseHookInformation
             ) =>
               span.setAttribute(
                 dataAttributeName,
-                JSON.stringify({ rowCount: data.rowCount })
+                JSON.stringify({ rowCount: responseInfo?.data.rowCount })
               ),
           };
 
@@ -398,7 +402,7 @@ describe('pg-pool@2.x', () => {
             enhancedDatabaseReporting: true,
             responseHook: (
               span: Span,
-              data: pg.QueryResult | pg.QueryArrayResult
+              responseInfo: PgResponseHookInformation
             ) => {
               throw 'some kind of failure!';
             },

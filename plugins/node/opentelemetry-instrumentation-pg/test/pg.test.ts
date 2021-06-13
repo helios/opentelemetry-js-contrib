@@ -32,7 +32,11 @@ import {
 } from '@opentelemetry/tracing';
 import * as assert from 'assert';
 import type * as pg from 'pg';
-import { PgInstrumentation, PgInstrumentationConfig } from '../src';
+import {
+  PgInstrumentation,
+  PgInstrumentationConfig,
+  PgResponseHookInformation,
+} from '../src';
 import { AttributeNames } from '../src/enums/AttributeNames';
 import { TimedEvent } from './types';
 import {
@@ -389,11 +393,11 @@ describe('pg@7.x', () => {
             enhancedDatabaseReporting: true,
             responseHook: (
               span: Span,
-              data: pg.QueryResult | pg.QueryArrayResult
+              responseInfo: PgResponseHookInformation
             ) =>
               span.setAttribute(
                 dataAttributeName,
-                JSON.stringify({ rowCount: data.rowCount })
+                JSON.stringify({ rowCount: responseInfo?.data.rowCount })
               ),
           };
           create(config);
@@ -448,7 +452,7 @@ describe('pg@7.x', () => {
             enhancedDatabaseReporting: true,
             responseHook: (
               span: Span,
-              data: pg.QueryResult | pg.QueryArrayResult
+              responseInfo: PgResponseHookInformation
             ) => {
               throw 'some kind of failure!';
             },

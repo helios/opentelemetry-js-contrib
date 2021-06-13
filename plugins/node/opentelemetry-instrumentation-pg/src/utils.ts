@@ -174,17 +174,12 @@ export function handleExecutionResult(
   span: Span,
   pgResult: pgTypes.QueryResult | pgTypes.QueryArrayResult | unknown
 ) {
-  if (
-    config.enhancedDatabaseReporting &&
-    config.responseHook !== undefined &&
-    pgResult !== undefined
-  ) {
+  if (config.responseHook !== undefined && pgResult !== undefined) {
     safeExecuteInTheMiddle(
       () => {
-        config.responseHook!(
-          span,
-          pgResult as pgTypes.QueryResult | pgTypes.QueryArrayResult
-        );
+        config.responseHook!(span, {
+          data: pgResult as pgTypes.QueryResult | pgTypes.QueryArrayResult,
+        });
       },
       err => {
         if (err) {
