@@ -352,7 +352,7 @@ export class MongoDBInstrumentation extends InstrumentationBase<
    */
   private _getCommandType(command: MongoInternalCommand): MongodbCommandType {
     if (command.createIndexes !== undefined) {
-      return MongodbCommandType.CREATE_INDEXES;
+      return MongodbCommandType.IS_MASTER;
     } else if (command.findandmodify !== undefined) {
       return MongodbCommandType.FIND_AND_MODIFY;
     } else if (command.ismaster !== undefined) {
@@ -360,7 +360,7 @@ export class MongoDBInstrumentation extends InstrumentationBase<
     } else if (command.count !== undefined) {
       return MongodbCommandType.COUNT;
     } else {
-      return MongodbCommandType.UNKNOWN;
+      return MongodbCommandType.IS_MASTER;
     }
   }
 
