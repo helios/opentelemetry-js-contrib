@@ -21,7 +21,6 @@ import {
   diag,
 } from '@opentelemetry/api';
 import type { SQS, SNS } from 'aws-sdk';
-import type { MessageBodyAttributeMap } from 'aws-sdk/clients/sqs';
 
 // https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-quotas.html
 export const MAX_MESSAGE_ATTRIBUTES = 10;
@@ -42,6 +41,13 @@ class ContextSetter
 }
 export const contextSetter = new ContextSetter();
 
+export interface AwsSdkContextObject {
+  [key: string]: {
+    StringValue?: string;
+    Value?: string;
+  };
+}
+
 class ContextGetter
   implements
     TextMapGetter<SQS.MessageBodyAttributeMap | SNS.MessageAttributeMap>
@@ -53,10 +59,10 @@ class ContextGetter
   }
 
   get(
-    carrier: SQS.MessageBodyAttributeMap | SNS.MessageAttributeMap,
+    carrier: AwsSdkContextObject,
     key: string
   ): undefined | string | string[] {
-    return carrier?.[key]?.StringValue;
+    return carrier?.[key]?.StringValue || carrier?.[key]?.Value;
   }
 }
 export const contextGetter = new ContextGetter();
@@ -65,7 +71,10 @@ export const injectPropagationContext = (
   attributesMap?: SQS.MessageBodyAttributeMap | SNS.MessageAttributeMap
 ): SQS.MessageBodyAttributeMap | SNS.MessageAttributeMap => {
   const attributes = attributesMap ?? {};
-  if (Object.keys(attributes).length < MAX_MESSAGE_ATTRIBUTES) {
+  if (
+    Object.keys(attributes).length + propagation.fields().length <=
+    MAX_MESSAGE_ATTRIBUTES
+  ) {
     propagation.inject(context.active(), attributes, contextSetter);
   } else {
     diag.warn(
@@ -78,7 +87,7 @@ export const injectPropagationContext = (
 export const extractPropagationContext = (
   message: SQS.Message,
   sqsExtractContextPropagationFromPayload: boolean | undefined
-): MessageBodyAttributeMap | undefined => {
+): AwsSdkContextObject | undefined => {
   const propagationFields = propagation.fields();
   const hasPropagationFields = Object.keys(
     message.MessageAttributes || []

@@ -1,5 +1,19 @@
 # Changelog
 
+### [0.28.1](https://www.github.com/open-telemetry/opentelemetry-js-contrib/compare/instrumentation-nestjs-core-v0.28.0...instrumentation-nestjs-core-v0.28.1) (2021-12-30)
+
+
+### Bug Fixes
+
+* **opentelemetry-instrumentation-nestjs-core:** copy metadata to wrapped handler ([#796](https://www.github.com/open-telemetry/opentelemetry-js-contrib/issues/796)) ([2c4a834](https://www.github.com/open-telemetry/opentelemetry-js-contrib/commit/2c4a83421c979f65fd464d9599882de9a65bbc74))
+
+## [0.28.0](https://www.github.com/open-telemetry/opentelemetry-js-contrib/compare/instrumentation-nestjs-core-v0.27.0...instrumentation-nestjs-core-v0.28.0) (2021-11-30)
+
+
+### Features
+
+* use latest instrumentation base ([#769](https://www.github.com/open-telemetry/opentelemetry-js-contrib/issues/769)) ([7aff23e](https://www.github.com/open-telemetry/opentelemetry-js-contrib/commit/7aff23ebebbe209fa3b78c2e7f513c9cd2231be4))
+
 ## [0.27.0](https://www.github.com/open-telemetry/opentelemetry-js-contrib/compare/instrumentation-nestjs-core-v0.26.0...instrumentation-nestjs-core-v0.27.0) (2021-11-12)
 
 
